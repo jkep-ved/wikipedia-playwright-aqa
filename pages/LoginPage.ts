@@ -2,10 +2,9 @@ import { expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 import { BasePage } from './BasePage';
 
-const idUsername = '#wpName1';
-const idPassword = '#wpPassword1';
-const idSubmit = '#wpLoginAttempt';
-const ms = { loginForm: 15_000, loginHidden: 30_000 } as const;
+const selUsername = '#wpName1';
+const selPassword = '#wpPassword1';
+const selSubmit = '#wpLoginAttempt';
 
 export class LoginPage extends BasePage {
   constructor(page: Page) {
@@ -13,15 +12,15 @@ export class LoginPage extends BasePage {
   }
 
   private usernameInput(): Locator {
-    return this.page.locator(idUsername);
+    return this.page.locator(selUsername);
   }
 
   private passwordInput(): Locator {
-    return this.page.locator(idPassword);
+    return this.page.locator(selPassword);
   }
 
   private submitButton(): Locator {
-    return this.page.locator(idSubmit);
+    return this.page.locator(selSubmit);
   }
 
   private vectorInterfaceLoginLink(): Locator {
@@ -33,18 +32,14 @@ export class LoginPage extends BasePage {
   }
 
   async openLoginFormFromHeader(): Promise<void> {
+    await this.dismissCookieBannerIfPresent();
+
     const vectorLink = this.vectorInterfaceLoginLink();
     if ((await vectorLink.count()) > 0) {
-      await expect(vectorLink).toBeVisible({ timeout: ms.loginForm });
-      await vectorLink.click();
+      await vectorLink.first().click();
     } else {
-      const portlet = this.portletLoginLink();
-      await expect(portlet).toBeAttached({ timeout: ms.loginForm });
-      await portlet.click({ force: true });
+      await this.portletLoginLink().click({ force: true });
     }
-
-    await expect(this.usernameInput()).toBeVisible({ timeout: ms.loginForm });
-    await this.dismissCookieBannerIfPresent();
   }
 
   async login(username: string, password: string): Promise<void> {
@@ -54,6 +49,6 @@ export class LoginPage extends BasePage {
   }
 
   async expectLoginSuccessful(): Promise<void> {
-    await expect(this.usernameInput()).toBeHidden({ timeout: ms.loginHidden });
+    await expect(this.usernameInput()).toBeHidden({ timeout: 30_000 });
   }
 }

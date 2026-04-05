@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { BasePage } from './BasePage';
 
-const pathMain = '/wiki/Main_Page';
+const pathMainPage = '/wiki/Main_Page';
 
 export class MainPage extends BasePage {
   constructor(page: Page) {
@@ -10,7 +10,7 @@ export class MainPage extends BasePage {
   }
 
   async open(): Promise<void> {
-    await this.page.goto(pathMain);
+    await this.page.goto(pathMainPage);
   }
 
   async expectInterfaceLangStartsWith(languageCode: string): Promise<void> {
