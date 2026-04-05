@@ -132,14 +132,3 @@ npx playwright test tests/change-language.spec.ts
    ```
 
 ---
-
-## Відповідність вимогам тестового завдання
-
-| Вимога | Статус |
-|--------|--------|
-| Ручний тест-кейс за сценарієм (Preferences → профіль → Internationalisation → мова) | Опис у розділі [Автоматизований тест-кейс](#автоматизований-тест-кейс) |
-| Автоматизація Playwright + TypeScript | `tests/change-language.spec.ts`, `playwright.config.ts` |
-| Облікові дані лише в `.env`, доступ через `process.env` | `dotenv` у конфігу; `.env` у `.gitignore` |
-| HTML-звіт Playwright | `playwright-report/` після прогону |
-| Прогін у Docker + звіт на хості | `Dockerfile`, інструкції вище |
-| README: кейс + як запускати та де звіт | Цей файл |
