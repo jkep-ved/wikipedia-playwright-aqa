@@ -2,58 +2,69 @@ import { expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 import { BasePage } from './BasePage';
 
-const rePersonalToolsToggle =
-  /Особисті інструменти|Personal tools|Private tools|Strumenti personali/i;
-const rePersonalNavigationLandmark =
-  /personal tools|особист|strumenti|інструменти|pirsonali|personale/i;
-const rePersonalToolsButtonInNav =
-  /особисті інструменти|personal tools|private tools|strumenti|інструменти|pirsonali/i;
-const cssPreferencesRootLink =
-  'a[href="/wiki/Special:Preferences"], a[href$="/wiki/Special:Preferences"], a[href*="title=Special:Preferences"]:not([href*="#"]):not([href*="reset"])';
+/** Кнопка меню personal tools / облікового запису (різні мови та написання). */
+const rePersonalToolsButton =
+  /Особисті інструменти|особисті інструменти|Personal tools|Private tools|Strumenti personali|strumenti|інструменти|personale|personali/i;
+/** Accessible name landmark'а `navigation` для блоку користувача. */
+const reUserNavigationLandmark =
+  /personal tools|особист|strumenti|інструменти|personale|personali/i;
 const urlPatternPreferences = /Special:Preferences/;
+const ms = {
+  personalToolsClick: 6000,
+  navButton: 3000,
+  vectorOther: 2000,
+  prefsLinkAttached: 10_000,
+  prefsUrl: 20_000
+} as const;
+const vectorOpenSteps: ReadonlyArray<{
+  locator: (p: Page) => Locator;
+  timeoutMs: number;
+  force?: boolean;
+}> = [
+  { locator: (p) => p.locator('#vector-user-links-dropdown'), timeoutMs: ms.navButton },
+  {
+    locator: (p) => p.locator('#vector-user-links-dropdown-checkbox'),
+    timeoutMs: ms.vectorOther,
+    force: true
+  },
+  {
+    locator: (p) => p.locator('label[for="vector-user-links-dropdown-checkbox"]'),
+    timeoutMs: ms.vectorOther
+  }
+];
 
-/**
- * Кроки 3–4 тест-кейсу: меню облікового запису → Special:Preferences.
- */
 export class UserMenuPage extends BasePage {
   constructor(page: Page) {
     super(page);
   }
 
   private personalToolsToggleByName(): Locator {
-    return this.page.getByRole('button', { name: rePersonalToolsToggle });
+    return this.page
+      .locator('#vector-user-links, #p-personal')
+      .getByRole('button', { name: rePersonalToolsButton });
   }
 
   private async tryOpenVectorDropdowns(): Promise<boolean> {
-    const vectorBtn = this.page.locator('#vector-user-links-dropdown');
-    if (await this.isVisibleWithin(vectorBtn, 3000)) {
-      await vectorBtn.click();
-      return true;
+    for (const { locator, timeoutMs, force } of vectorOpenSteps) {
+      const target = locator(this.page);
+      if (await this.isVisibleWithin(target, timeoutMs)) {
+        await target.click(force ? { force: true } : {});
+        return true;
+      }
     }
-
-    const menuLabel = this.page.locator('label[for="vector-user-links-dropdown-checkbox"]');
-    if (await this.isVisibleWithin(menuLabel, 2000)) {
-      await menuLabel.click();
-      return true;
-    }
-
-    const checkbox = this.page.locator('#vector-user-links-dropdown-checkbox');
-    if (await this.isVisibleWithin(checkbox, 2000)) {
-      await checkbox.click({ force: true });
-      return true;
-    }
-
     return false;
   }
 
   private async tryOpenFromNavigationLandmark(): Promise<boolean> {
-    const nav = this.page.getByRole('navigation', { name: rePersonalNavigationLandmark });
-    const menuButton = nav.getByRole('button', { name: rePersonalToolsButtonInNav });
-    if ((await menuButton.count()) === 0) {
-      return false;
+    const nav = this.page.getByRole('navigation', { name: reUserNavigationLandmark });
+    const byAria = nav.locator('button[aria-controls*="vector-user-links"]');
+    if ((await byAria.count()) > 0 && (await this.isVisibleWithin(byAria, ms.navButton))) {
+      await byAria.click();
+      return true;
     }
-    if (await this.isVisibleWithin(menuButton.first(), 3000)) {
-      await menuButton.first().click();
+    const byRole = nav.getByRole('button', { name: rePersonalToolsButton });
+    if ((await byRole.count()) > 0 && (await this.isVisibleWithin(byRole, ms.navButton))) {
+      await byRole.click();
       return true;
     }
     return false;
@@ -61,7 +72,7 @@ export class UserMenuPage extends BasePage {
 
   async openPersonalToolsMenu(): Promise<void> {
     try {
-      await this.personalToolsToggleByName().first().click({ timeout: 6000 });
+      await this.personalToolsToggleByName().click({ timeout: ms.personalToolsClick });
       return;
     } catch {
       /* інші варіанти нижче */
@@ -76,7 +87,7 @@ export class UserMenuPage extends BasePage {
     }
 
     const directBar = this.page.locator('#pt-preferences a[href*="Special:Preferences"]');
-    if (await this.isVisibleWithin(directBar, 2000)) {
+    if (await this.isVisibleWithin(directBar, ms.vectorOther)) {
       return;
     }
 
@@ -84,17 +95,17 @@ export class UserMenuPage extends BasePage {
   }
 
   private preferencesRootLink(): Locator {
-    return this.page.locator(cssPreferencesRootLink).first();
+    return this.page.locator('#pt-preferences a[href*="Special:Preferences"]');
   }
 
   async openPreferencesFromUserMenu(): Promise<void> {
     await this.openPersonalToolsMenu();
 
     const prefsLink = this.preferencesRootLink();
-    await expect(prefsLink).toBeAttached({ timeout: 10_000 });
+    await expect(prefsLink).toBeAttached({ timeout: ms.prefsLinkAttached });
     await prefsLink.click({ force: true });
 
-    await expect(this.page).toHaveURL(urlPatternPreferences, { timeout: 20_000 });
+    await expect(this.page).toHaveURL(urlPatternPreferences, { timeout: ms.prefsUrl });
     await this.dismissCookieBannerIfPresent();
   }
 }

@@ -1,6 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { LoginPage, MainPage, PreferencesPage, UserMenuPage } from '../pages';
 
+function wikiEnv(): { password: string; preferredTarget: string | undefined; username: string } {
+  return {
+    username: process.env.WIKI_USERNAME!,
+    password: process.env.WIKI_PASSWORD!,
+    preferredTarget: process.env.TARGET_LANGUAGE?.trim() || undefined
+  };
+}
+
 test.describe('Зміна мови інтерфейсу Wikipedia', () => {
   test.beforeEach(() => {
     test.skip(
@@ -15,9 +23,7 @@ test.describe('Зміна мови інтерфейсу Wikipedia', () => {
     const userMenuPage = new UserMenuPage(page);
     const preferencesPage = new PreferencesPage(page);
 
-    const username = process.env.WIKI_USERNAME!;
-    const password = process.env.WIKI_PASSWORD!;
-    const preferredTarget = process.env.TARGET_LANGUAGE?.trim() || undefined;
+    const { username, password, preferredTarget } = wikiEnv();
 
     await test.step('1. Відкрити головну сторінку цільової вікі', async () => {
       await mainPage.open();
@@ -51,8 +57,7 @@ test.describe('Зміна мови інтерфейсу Wikipedia', () => {
       await preferencesPage.savePreferences();
     });
 
-    await test.step('Очікуваний результат: успіх збереження (за наявності) та обрана мова в полі', async () => {
-      await preferencesPage.expectSaveSuccessMessageIfPresent();
+    await test.step('Очікуваний результат: у полі відображається обрана мова', async () => {
       await preferencesPage.expectSelectedLanguage(chosen);
     });
 

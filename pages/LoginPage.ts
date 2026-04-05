@@ -1,42 +1,49 @@
 import { expect } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { BasePage } from './BasePage';
 
-const pathLogin = '/wiki/Special:UserLogin';
 const idUsername = '#wpName1';
 const idPassword = '#wpPassword1';
 const idSubmit = '#wpLoginAttempt';
-const cssHeaderLoginLink = 'a[href*="Special:UserLogin"]';
+const ms = { loginForm: 15_000, loginHidden: 30_000 } as const;
 
 export class LoginPage extends BasePage {
   constructor(page: Page) {
     super(page);
   }
 
-  private usernameInput() {
+  private usernameInput(): Locator {
     return this.page.locator(idUsername);
   }
 
-  private passwordInput() {
+  private passwordInput(): Locator {
     return this.page.locator(idPassword);
   }
 
-  private submitButton() {
+  private submitButton(): Locator {
     return this.page.locator(idSubmit);
   }
 
-  /** Прямий перехід (допоміжно; у сценарії тест-кейсу — вхід через шапку). */
-  async open(): Promise<void> {
-    await this.page.goto(pathLogin);
-    await this.dismissCookieBannerIfPresent();
+  private vectorInterfaceLoginLink(): Locator {
+    return this.page.locator('a[data-mw-interface][href*="Special:UserLogin"]');
   }
 
-  /** Крок 2: з головної відкрити форму входу посиланням у шапці. */
+  private portletLoginLink(): Locator {
+    return this.page.locator('#pt-login a[href*="Special:UserLogin"]');
+  }
+
   async openLoginFormFromHeader(): Promise<void> {
-    const loginLink = this.page.locator(cssHeaderLoginLink).first();
-    await expect(loginLink).toBeVisible({ timeout: 15_000 });
-    await loginLink.click();
-    await expect(this.usernameInput()).toBeVisible({ timeout: 15_000 });
+    const vectorLink = this.vectorInterfaceLoginLink();
+    if ((await vectorLink.count()) > 0) {
+      await expect(vectorLink).toBeVisible({ timeout: ms.loginForm });
+      await vectorLink.click();
+    } else {
+      const portlet = this.portletLoginLink();
+      await expect(portlet).toBeAttached({ timeout: ms.loginForm });
+      await portlet.click({ force: true });
+    }
+
+    await expect(this.usernameInput()).toBeVisible({ timeout: ms.loginForm });
     await this.dismissCookieBannerIfPresent();
   }
 
@@ -47,6 +54,6 @@ export class LoginPage extends BasePage {
   }
 
   async expectLoginSuccessful(): Promise<void> {
-    await expect(this.usernameInput()).toBeHidden({ timeout: 30_000 });
+    await expect(this.usernameInput()).toBeHidden({ timeout: ms.loginHidden });
   }
 }

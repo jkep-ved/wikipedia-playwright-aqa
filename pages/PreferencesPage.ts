@@ -2,49 +2,42 @@ import { expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 import { BasePage } from './BasePage';
 
-const pathPreferences = '/wiki/Special:Preferences';
+const idLanguageWidget = '#mw-input-wplanguage';
 const cssLanguageSelect = 'select[name="wplanguage"]';
 const cssUserProfileTab = 'a[href="#mw-prefsection-personal"]';
-const cssSavePrefsControls =
-  'button[name="saveprefs"], input[name="saveprefs"], button[name="wpSaveprefs"], input[name="wpSaveprefs"]';
-const reSaveButtonAccessibleName =
-  /save|зберегти|записати|salva|speicher|enregistrer|zapisz|guardar|sauvegarder|opslaan|kaydet|spara|gem|保存|记录/i;
 const reInternationalisationHeading =
   /інтернаціоналізація|internationalisation|internationalization|internazionalizzazione|интернационализация|internationalisierung/i;
+const ms = { languageReady: 20_000 } as const;
 
 export class PreferencesPage extends BasePage {
   constructor(page: Page) {
     super(page);
   }
 
+  private mainPreferencesForm(): Locator {
+    return this.page.locator('form').filter({
+      has: this.page.locator(`${idLanguageWidget}, ${cssLanguageSelect}`)
+    });
+  }
+
   private languageSelect(): Locator {
-    return this.page.locator(cssLanguageSelect);
+    return this.mainPreferencesForm().locator(cssLanguageSelect);
+  }
+
+  private saveButton(): Locator {
+    return this.mainPreferencesForm().locator('button[type="submit"]');
   }
 
   private userProfileTab(): Locator {
     return this.page.locator(cssUserProfileTab);
   }
 
-  private saveControlByName(): Locator {
-    return this.page.locator(cssSavePrefsControls);
-  }
-
-  private saveButtonByLabel(): Locator {
-    return this.page.getByRole('button', { name: reSaveButtonAccessibleName }).first();
-  }
-
-  /** Прямий URL — допоміжно; у кейсі перехід через меню користувача. */
-  async open(): Promise<void> {
-    await this.page.goto(pathPreferences);
-    await this.dismissCookieBannerIfPresent();
-  }
-
   async scrollInternationalisationSectionIntoView(): Promise<void> {
-    const heading = this.page.getByRole('heading', {
+    const heading = this.mainPreferencesForm().getByRole('heading', {
       name: reInternationalisationHeading
     });
     if ((await heading.count()) > 0) {
-      await heading.first().scrollIntoViewIfNeeded();
+      await heading.scrollIntoViewIfNeeded();
       return;
     }
     await this.languageSelect().evaluate((el) => el.scrollIntoView({ block: 'nearest' }));
@@ -62,7 +55,7 @@ export class PreferencesPage extends BasePage {
   }
 
   async expectLanguageSelectReady(): Promise<void> {
-    await expect(this.languageSelect()).toBeAttached({ timeout: 20_000 });
+    await expect(this.languageSelect()).toBeAttached({ timeout: ms.languageReady });
   }
 
   async selectDifferentInterfaceLanguage(preferred: string | undefined): Promise<string> {
@@ -87,41 +80,14 @@ export class PreferencesPage extends BasePage {
     return alternate;
   }
 
-  async scrollSaveButtonIntoView(): Promise<void> {
-    const named = this.saveControlByName();
-    if ((await named.count()) > 0) {
-      await named.first().scrollIntoViewIfNeeded();
-      return;
-    }
-    await this.saveButtonByLabel().scrollIntoViewIfNeeded();
-  }
-
-  private async clickSaveControl(): Promise<void> {
-    const named = this.saveControlByName();
-    if ((await named.count()) > 0) {
-      await named.first().click();
-      return;
-    }
-    await this.saveButtonByLabel().click();
-  }
-
   async savePreferences(): Promise<void> {
-    await this.scrollSaveButtonIntoView();
-    await this.clickSaveControl();
-  }
-
-  async expectSaveSuccessMessageIfPresent(): Promise<void> {
-    const banner = this.page.locator(
-      '.mw-message--success, .cdx-message--success, .successbox, .mw-notification-visible'
-    );
-    if ((await banner.count()) === 0) {
-      return;
-    }
-    await expect(banner.first()).toBeVisible({ timeout: 8000 });
+    const save = this.saveButton();
+    await save.scrollIntoViewIfNeeded();
+    await save.click();
   }
 
   async expectSelectedLanguage(code: string): Promise<void> {
-    await expect(this.languageSelect()).toHaveValue(code, { timeout: 20_000 });
+    await expect(this.languageSelect()).toHaveValue(code, { timeout: ms.languageReady });
   }
 
   async reload(): Promise<void> {
