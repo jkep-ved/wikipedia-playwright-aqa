@@ -1,7 +1,8 @@
 import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { BasePage } from './BasePage';
-import { WikiPaths } from './locators';
+
+const pathMain = '/wiki/Main_Page';
 
 export class MainPage extends BasePage {
   constructor(page: Page) {
@@ -9,7 +10,7 @@ export class MainPage extends BasePage {
   }
 
   async open(): Promise<void> {
-    await this.page.goto(WikiPaths.main);
+    await this.page.goto(pathMain);
   }
 
   async getDocumentLang(): Promise<string | null> {

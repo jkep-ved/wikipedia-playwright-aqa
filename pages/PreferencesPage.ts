@@ -1,7 +1,16 @@
 import { expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 import { BasePage } from './BasePage';
-import { WikiCss, WikiPaths, WikiRegex } from './locators';
+
+const pathPreferences = '/wiki/Special:Preferences';
+const cssLanguageSelect = 'select[name="wplanguage"]';
+const cssUserProfileTab = 'a[href="#mw-prefsection-personal"]';
+const cssSavePrefsControls =
+  'button[name="saveprefs"], input[name="saveprefs"], button[name="wpSaveprefs"], input[name="wpSaveprefs"]';
+const reSaveButtonAccessibleName =
+  /save|зберегти|записати|salva|speicher|enregistrer|zapisz|guardar|sauvegarder|opslaan|kaydet|spara|gem|保存|记录/i;
+const reInternationalisationHeading =
+  /інтернаціоналізація|internationalisation|internationalization|internazionalizzazione|интернационализация|internationalisierung/i;
 
 export class PreferencesPage extends BasePage {
   constructor(page: Page) {
@@ -9,31 +18,30 @@ export class PreferencesPage extends BasePage {
   }
 
   private languageSelect(): Locator {
-    return this.page.locator(WikiCss.languageSelect);
+    return this.page.locator(cssLanguageSelect);
   }
 
   private userProfileTab(): Locator {
-    return this.page.locator(WikiCss.userProfileTab);
+    return this.page.locator(cssUserProfileTab);
   }
 
   private saveControlByName(): Locator {
-    return this.page.locator(WikiCss.savePrefsControls);
+    return this.page.locator(cssSavePrefsControls);
   }
 
-  /** Кнопка «Зберегти» за accessible name (якщо немає name=saveprefs). */
   private saveButtonByLabel(): Locator {
-    return this.page.getByRole('button', { name: WikiRegex.saveButtonAccessibleName }).first();
+    return this.page.getByRole('button', { name: reSaveButtonAccessibleName }).first();
   }
 
   /** Прямий URL — допоміжно; у кейсі перехід через меню користувача. */
   async open(): Promise<void> {
-    await this.page.goto(WikiPaths.preferences);
+    await this.page.goto(pathPreferences);
     await this.dismissCookieBannerIfPresent();
   }
 
   async scrollInternationalisationSectionIntoView(): Promise<void> {
     const heading = this.page.getByRole('heading', {
-      name: WikiRegex.internationalisationHeading
+      name: reInternationalisationHeading
     });
     if ((await heading.count()) > 0) {
       await heading.first().scrollIntoViewIfNeeded();

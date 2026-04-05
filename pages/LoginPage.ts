@@ -1,7 +1,12 @@
 import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { BasePage } from './BasePage';
-import { WikiCss, WikiIds, WikiPaths } from './locators';
+
+const pathLogin = '/wiki/Special:UserLogin';
+const idUsername = '#wpName1';
+const idPassword = '#wpPassword1';
+const idSubmit = '#wpLoginAttempt';
+const cssHeaderLoginLink = 'a[href*="Special:UserLogin"]';
 
 export class LoginPage extends BasePage {
   constructor(page: Page) {
@@ -9,26 +14,26 @@ export class LoginPage extends BasePage {
   }
 
   private usernameInput() {
-    return this.page.locator(WikiIds.loginUsername);
+    return this.page.locator(idUsername);
   }
 
   private passwordInput() {
-    return this.page.locator(WikiIds.loginPassword);
+    return this.page.locator(idPassword);
   }
 
   private submitButton() {
-    return this.page.locator(WikiIds.loginSubmit);
+    return this.page.locator(idSubmit);
   }
 
   /** Прямий перехід (допоміжно; у сценарії тест-кейсу — вхід через шапку). */
   async open(): Promise<void> {
-    await this.page.goto(WikiPaths.login);
+    await this.page.goto(pathLogin);
     await this.dismissCookieBannerIfPresent();
   }
 
   /** Крок 2: з головної відкрити форму входу посиланням у шапці. */
   async openLoginFormFromHeader(): Promise<void> {
-    const loginLink = this.page.locator(WikiCss.loginFromSiteLink).first();
+    const loginLink = this.page.locator(cssHeaderLoginLink).first();
     await expect(loginLink).toBeVisible({ timeout: 15_000 });
     await loginLink.click();
     await expect(this.usernameInput()).toBeVisible({ timeout: 15_000 });

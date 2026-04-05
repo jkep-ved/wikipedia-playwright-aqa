@@ -1,7 +1,16 @@
 import { expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 import { BasePage } from './BasePage';
-import { WikiCss, WikiRegex, WikiUrlPatterns } from './locators';
+
+const rePersonalToolsToggle =
+  /Особисті інструменти|Personal tools|Private tools|Strumenti personali/i;
+const rePersonalNavigationLandmark =
+  /personal tools|особист|strumenti|інструменти|pirsonali|personale/i;
+const rePersonalToolsButtonInNav =
+  /особисті інструменти|personal tools|private tools|strumenti|інструменти|pirsonali/i;
+const cssPreferencesRootLink =
+  'a[href="/wiki/Special:Preferences"], a[href$="/wiki/Special:Preferences"], a[href*="title=Special:Preferences"]:not([href*="#"]):not([href*="reset"])';
+const urlPatternPreferences = /Special:Preferences/;
 
 /**
  * Кроки 3–4 тест-кейсу: меню облікового запису → Special:Preferences.
@@ -12,7 +21,7 @@ export class UserMenuPage extends BasePage {
   }
 
   private personalToolsToggleByName(): Locator {
-    return this.page.getByRole('button', { name: WikiRegex.personalToolsToggle });
+    return this.page.getByRole('button', { name: rePersonalToolsToggle });
   }
 
   private async tryOpenVectorDropdowns(): Promise<boolean> {
@@ -38,8 +47,8 @@ export class UserMenuPage extends BasePage {
   }
 
   private async tryOpenFromNavigationLandmark(): Promise<boolean> {
-    const nav = this.page.getByRole('navigation', { name: WikiRegex.personalNavigationLandmark });
-    const menuButton = nav.getByRole('button', { name: WikiRegex.personalToolsButtonInNav });
+    const nav = this.page.getByRole('navigation', { name: rePersonalNavigationLandmark });
+    const menuButton = nav.getByRole('button', { name: rePersonalToolsButtonInNav });
     if ((await menuButton.count()) === 0) {
       return false;
     }
@@ -75,7 +84,7 @@ export class UserMenuPage extends BasePage {
   }
 
   private preferencesRootLink(): Locator {
-    return this.page.locator(WikiCss.preferencesRootLink).first();
+    return this.page.locator(cssPreferencesRootLink).first();
   }
 
   async openPreferencesFromUserMenu(): Promise<void> {
@@ -85,7 +94,7 @@ export class UserMenuPage extends BasePage {
     await expect(prefsLink).toBeAttached({ timeout: 10_000 });
     await prefsLink.click({ force: true });
 
-    await expect(this.page).toHaveURL(WikiUrlPatterns.preferences, { timeout: 20_000 });
+    await expect(this.page).toHaveURL(urlPatternPreferences, { timeout: 20_000 });
     await this.dismissCookieBannerIfPresent();
   }
 }
