@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Автоматизований тест Wikipedia (Playwright)
 
 ## Опис проєкту
@@ -132,3 +133,4 @@ npx playwright test tests/change-language.spec.ts
    ```
 
 ---
+
