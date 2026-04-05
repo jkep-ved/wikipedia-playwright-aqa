@@ -144,4 +144,17 @@ npx playwright test tests/change-language.spec.ts
 | Прогін у Docker + звіт на хості | `Dockerfile`, інструкції вище |
 | README: кейс + як запускати та де звіт | Цей файл |
 
-**Що залишилось зробити вам:** створити репозиторій на GitHub, виконати `git init`, додати remote і надіслати посилання. Секрети з `.env` у репозиторій не потрапляють (файл ігнорується).
+### Що залишилось зробити вам (покроково)
+
+1. **Закомітити зміни** в локальному Git (без `.env` — він у `.gitignore`).
+2. **Створити порожній репозиторій** на [GitHub](https://github.com/new) (без README, якщо вже є локальний).
+3. **Підключити remote і надіслати код:**
+   ```bash
+   git remote add origin https://github.com/<ваш-нік>/<назва-репо>.git
+   git branch -M main
+   git push -u origin main
+   ```
+4. **Перевірити Docker** (опційно, один раз): `docker build -t wikipedia-playwright-aqa .` і прогін з volume, як у розділі «Запуск у Docker».
+5. **Надіслати перевіряючому посилання** на репозиторій.
+
+Паролі з `.env` у GitHub не потрапляють, якщо не робити `git add .env` і не знімати рядок `.env` з `.gitignore`.

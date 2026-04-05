@@ -7,6 +7,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY playwright.config.ts tsconfig.json ./
+COPY pages ./pages
 COPY tests ./tests
 
 ENV CI=true

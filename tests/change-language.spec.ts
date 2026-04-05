@@ -1,35 +1,5 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
-
-async function pickDifferentLanguage(
-  langSelect: Locator,
-  preferred: string | undefined
-): Promise<string> {
-  const current = await langSelect.inputValue();
-  if (preferred && preferred !== current) {
-    await langSelect.selectOption(preferred);
-    return preferred;
-  }
-  const alternate = await langSelect.evaluate((el: HTMLSelectElement) => {
-    const values = [...el.options].map((o) => o.value).filter(Boolean);
-    return values.find((v) => v !== el.value) ?? null;
-  });
-  if (!alternate) {
-    throw new Error('Не знайдено альтернативної мови в списку wplanguage');
-  }
-  await langSelect.selectOption(alternate);
-  return alternate;
-}
-
-async function dismissCookieBannerIfPresent(page: Page): Promise<void> {
-  const accept = page.getByRole('button', {
-    name: /accept|прийняти|ok|згоден|i agree/i
-  });
-  try {
-    await accept.click({ timeout: 3000 });
-  } catch {
-    /* банер відсутній */
-  }
-}
+import { expect, test } from '@playwright/test';
+import { LoginPage, MainPage, PreferencesPage, UserMenuPage } from '../pages';
 
 test.describe('Зміна мови інтерфейсу Wikipedia', () => {
   test.beforeEach(() => {
@@ -39,47 +9,59 @@ test.describe('Зміна мови інтерфейсу Wikipedia', () => {
     );
   });
 
-  test('авторизований користувач змінює мову інтерфейсу в Preferences', async ({
-    page,
-    baseURL
-  }) => {
+  test('TC-UI-LANG-01: зміна мови інтерфейсу зареєстрованим користувачем через сторінку налаштувань', async ({ page }) => {
+    const mainPage = new MainPage(page);
+    const loginPage = new LoginPage(page);
+    const userMenuPage = new UserMenuPage(page);
+    const preferencesPage = new PreferencesPage(page);
+
     const username = process.env.WIKI_USERNAME!;
     const password = process.env.WIKI_PASSWORD!;
     const preferredTarget = process.env.TARGET_LANGUAGE?.trim() || undefined;
 
-    await page.goto('/wiki/Special:UserLogin');
-    await dismissCookieBannerIfPresent(page);
+    await test.step('1. Відкрити головну сторінку цільової вікі', async () => {
+      await mainPage.open();
+    });
 
-    await page.locator('#wpName1').fill(username);
-    await page.locator('#wpPassword1').fill(password);
-    await page.locator('#wpLoginAttempt').click();
+    await test.step('2. Авторизуватися (посилання на вхід у шапці сторінки)', async () => {
+      await loginPage.openLoginFormFromHeader();
+      await loginPage.login(username, password);
+      await loginPage.expectLoginSuccessful();
+    });
 
-    await expect(page.locator('#wpName1')).toBeHidden({ timeout: 30_000 });
+    await test.step('3–4. Меню облікового запису → персональні налаштування (Special:Preferences)', async () => {
+      await userMenuPage.openPreferencesFromUserMenu();
+    });
 
-    await page.goto('/wiki/Special:Preferences');
-    await dismissCookieBannerIfPresent(page);
+    await test.step('5. Вкладка профілю та розділ інтернаціоналізації', async () => {
+      await preferencesPage.openUserProfileTabIfVisible();
+      await preferencesPage.scrollInternationalisationSectionIntoView();
+      await preferencesPage.expectLanguageSelectReady();
+    });
 
-    const userProfileTab = page.locator('a[href="#mw-prefsection-personal"]');
-    if (await userProfileTab.isVisible()) {
-      await userProfileTab.click();
-    }
+    const chosen = await test.step('6. Зафіксувати поточну мову; обрати іншу в списку', async () => {
+      const before = await preferencesPage.getCurrentInterfaceLanguageCode();
+      expect(before.length).toBeGreaterThan(0);
+      const next = await preferencesPage.selectDifferentInterfaceLanguage(preferredTarget);
+      expect(next).not.toBe(before);
+      return next;
+    });
 
-    const langSelect = page.locator('select[name="wplanguage"]');
-    await expect(langSelect).toBeVisible({ timeout: 20_000 });
+    await test.step('7. Прокрутити донизу та натиснути «Зберегти»', async () => {
+      await preferencesPage.savePreferences();
+    });
 
-    const chosen = await pickDifferentLanguage(langSelect, preferredTarget);
+    await test.step('Очікуваний результат: успіх збереження (за наявності) та обрана мова в полі', async () => {
+      await preferencesPage.expectSaveSuccessMessageIfPresent();
+      await preferencesPage.expectSelectedLanguage(chosen);
+    });
 
-    const prefsForm = page.locator('#mw-prefs-form');
-    await prefsForm.getByRole('button', { name: /save|зберегти|записати/i }).click();
+    await test.step('Очікуваний результат: після перезавантаження та переходу — мова інтерфейсу', async () => {
+      await preferencesPage.reload();
+      await preferencesPage.expectSelectedLanguage(chosen);
 
-    const langAfterSave = page.locator('select[name="wplanguage"]');
-    await expect(langAfterSave).toHaveValue(chosen, { timeout: 20_000 });
-
-    await page.reload();
-    await expect(page.locator('select[name="wplanguage"]')).toHaveValue(chosen);
-
-    await page.goto('/wiki/Main_Page');
-    const htmlLang = await page.locator('html').getAttribute('lang');
-    expect(htmlLang?.toLowerCase().startsWith(chosen.split('-')[0].toLowerCase())).toBeTruthy();
+      await mainPage.open();
+      await mainPage.expectInterfaceLangStartsWith(chosen);
+    });
   });
 });
